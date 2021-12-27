@@ -1,15 +1,23 @@
 package mtLog.context;
 
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Stack;
 
 public class LogRecordContext {
 
-  private static final InheritableThreadLocal<Stack<Map<String, Object>>> variableMapStack =
+  private static final InheritableThreadLocal<Deque<Map<String, Object>>> variableMapStack =
       new InheritableThreadLocal<>();
 
-  public static void putEmptySpan() {
-
+  public static void init() {
+    Deque<Map<String, Object>> stack = variableMapStack.get();
+    if (stack == null) {
+      stack = new ArrayDeque<>();
+    }
+    stack.push(new HashMap<>());
+    variableMapStack.set(stack);
   }
 
   public static void clear() {
@@ -17,6 +25,10 @@ public class LogRecordContext {
   }
 
   public static Map<String, Object> getVariables() {
-    return variableMapStack.get().peek();
+    Deque<Map<String, Object>> stack = variableMapStack.get();
+    if (stack == null || stack.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return stack.peek();
   }
 }

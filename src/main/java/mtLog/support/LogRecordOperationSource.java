@@ -1,9 +1,7 @@
-package mtLog.component;
+package mtLog.support;
 
-import java.lang.reflect.Method;
 import mtLog.annotation.LogRecordAnnotation;
 import mtLog.entity.LogRecordOps;
-import mtLog.operator.entity.Operator;
 import mtLog.operator.service.IOperatorGetService;
 import org.springframework.stereotype.Component;
 
@@ -17,18 +15,11 @@ public class LogRecordOperationSource {
     this.operatorGetService = operatorGetService;
   }
 
-  public LogRecordOps computeLogRecordOperations(Method method, Class<?> targetClass) {
+  public LogRecordOps computeLogRecordOperations(LogRecordAnnotation annotation) {
     LogRecordOps logRecordOps = new LogRecordOps();
-    if (!method.isAnnotationPresent(LogRecordAnnotation.class)) {
-      return logRecordOps;
-    }
-    LogRecordAnnotation annotation = method.getAnnotation(LogRecordAnnotation.class);
-    if (annotation.operator().equals("")) {
-      Operator operator = operatorGetService.getUser();
-      logRecordOps.setOperator(operator.getName());
-    } else {
-      logRecordOps.setOperator(annotation.operator());
-    }
+    logRecordOps.setOperator(
+        annotation.operator().equals("") ?
+            operatorGetService.getUser().getName() : annotation.operator());
     logRecordOps.setSuccess(annotation.success());
     logRecordOps.setFail(annotation.fail());
     logRecordOps.setBizNo(annotation.bizNo());

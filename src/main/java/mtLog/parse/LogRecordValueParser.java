@@ -8,23 +8,23 @@ import org.springframework.expression.EvaluationContext;
 public class LogRecordValueParser {
 
   public LogRecordValueParser(IFunctionService functionService,
-      LogRecordExpressionEvaluator expressionEvaluator,
-      EvaluationContext evaluationContext) {
+      LogRecordExpressionEvaluator expressionEvaluator) {
     this.functionService = functionService;
     this.expressionEvaluator = expressionEvaluator;
-    this.evaluationContext = evaluationContext;
   }
 
   private final IFunctionService functionService;
   private final LogRecordExpressionEvaluator expressionEvaluator;
-  private final EvaluationContext evaluationContext;
 
-  public String parseExpression(String expression, Method method, Class<?> targetClass) {
-    return this.parseExpression(expression, new AnnotatedElementKey(method, targetClass));
+  public String parseExpression(String expression, Method method, Class<?> targetClass,
+      EvaluationContext evaluationContext) {
+    return this.parseExpression(expression, new AnnotatedElementKey(method, targetClass),
+        evaluationContext);
   }
 
-  public String parseExpression(String expression, AnnotatedElementKey methodKey) {
-    return expressionEvaluator.parseExpression(expression, methodKey, this.evaluationContext);
+  public String parseExpression(String expression, AnnotatedElementKey methodKey,
+      EvaluationContext evaluationContext) {
+    return expressionEvaluator.parseExpression(expression, methodKey, evaluationContext);
   }
 
 
