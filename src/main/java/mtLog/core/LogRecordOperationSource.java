@@ -1,25 +1,24 @@
-package mtLog.support;
+package mtLog.core;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import mtLog.annotation.LogRecordAnnotation;
-import mtLog.entity.LogRecordOps;
-import mtLog.operator.service.IOperatorGetService;
+import mtLog.core.entity.LogRecordOps;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LogRecordOperationSource {
 
-  private final IOperatorGetService operatorGetService;
-
-  public LogRecordOperationSource(
-      IOperatorGetService operatorGetService) {
-    this.operatorGetService = operatorGetService;
+  public List<LogRecordOps> computeLogRecordOperations(LogRecordAnnotation[] annotations) {
+    return Arrays.stream(annotations)
+        .map(this::computeLogRecordOperations)
+        .collect(Collectors.toList());
   }
 
   public LogRecordOps computeLogRecordOperations(LogRecordAnnotation annotation) {
     LogRecordOps logRecordOps = new LogRecordOps();
-    logRecordOps.setOperator(
-        annotation.operator().equals("") ?
-            operatorGetService.getUser().getName() : annotation.operator());
+    logRecordOps.setOperator(annotation.operator());
     logRecordOps.setSuccess(annotation.success());
     logRecordOps.setFail(annotation.fail());
     logRecordOps.setBizNo(annotation.bizNo());

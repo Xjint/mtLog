@@ -1,4 +1,4 @@
-package mtLog.entity;
+package mtLog.core.entity;
 
 public class LogRecordOps {
 

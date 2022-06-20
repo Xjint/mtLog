@@ -1,148 +1,83 @@
 package mtLog.aspect;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import mtLog.annotation.LogRecordAnnotation;
-import mtLog.context.LogRecordContext;
-import mtLog.context.LogRecordEvaluationContext;
-import mtLog.entity.LogRecordOps;
-import mtLog.support.LogRecordOperationSource;
+import mtLog.core.ExpressionEvaluator;
+import mtLog.core.LogRecordContext;
+import mtLog.core.LogRecordOperationSource;
+import mtLog.core.entity.ExecutionResult;
+import mtLog.core.entity.LogRecordOps;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.expression.EvaluationContext;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
+@Order
 public class LogRecordAnnotationAspect {
-
 
   private final Logger log = LoggerFactory.getLogger(getClass());
   private final LogRecordOperationSource logRecordOperationSource;
+  private final ExpressionEvaluator expressionEvaluator;
 
-  public LogRecordAnnotationAspect(LogRecordOperationSource logRecordOperationSource) {
+  public LogRecordAnnotationAspect(LogRecordOperationSource logRecordOperationSource,
+      ExpressionEvaluator expressionEvaluator) {
     this.logRecordOperationSource = logRecordOperationSource;
+    this.expressionEvaluator = expressionEvaluator;
   }
 
-  @Around(value = "@annotation(logRecordAnnotation)")
-  public Object around(ProceedingJoinPoint pjp, LogRecordAnnotation logRecordAnnotation)
+  @Around(value = "@annotation(mtLog.annotation.LogRecordAnnotations) || @annotation(mtLog.annotation.LogRecordAnnotation)")
+  public Object around(ProceedingJoinPoint pjp)
       throws Throwable {
-    /*
-     * 1. 拦截方法
-     * 2. 解析注解参数
-     * 3. 自定义函数将输入值转换为目标值(这个动作在6中才会实际执行) 得到一个模版字符串
-     * 4. 模版字符串解析为expression对象
-     * 5. 填充EvaluationContext(需要把3中的自定义函数注册到context中)
-     * 6. 根据填充EvaluationContext解析expression对象为业务文本信息
-     *
-     * 1-4都是固定的 只是每一次构造不同的EvaluationContext进行解析
-     *
-     *
-     *
-     * @LogRecordAnnotation(success = "订单号码: #getOrderNameById(#{})", bizNo = "")
-     * 模版（string）-> 表达式(expression) -> 获取实际结果(Object)
-     * */
-    Class<?> targetClass = pjp.getTarget().getClass();
-    Object[] args = pjp.getArgs();
-    Method method = ((MethodSignature) pjp.getSignature()).getMethod();
+    LogRecordAnnotation[] logRecordAnnotations = getLogRecordAnnotations(pjp);
+    expressionEvaluator.setJoinPoint(pjp);
     Object ret = null;
-    MethodExecuteResult methodExecuteResult = new MethodExecuteResult(true, null, "");
+    ExecutionResult executionResult;
     LogRecordContext.init();
-    LogRecordOps operations = new LogRecordOps();
-    Map<String, String> functionNameAndReturnMap = new HashMap<>();
+    List<LogRecordOps> operations = new ArrayList<>();
     try {
-      //2. 解析注解参数
-      operations = logRecordOperationSource.computeLogRecordOperations(logRecordAnnotation);
-      List<String> spElTemplates = getBeforeExecuteFunctionTemplate(operations);
-      //业务逻辑执行前的自定义函数解析
-      functionNameAndReturnMap = processBeforeExecuteFunctionTemplate(spElTemplates, targetClass,
-          method, args);
+      operations = logRecordOperationSource
+          .computeLogRecordOperations(logRecordAnnotations);
     } catch (Exception e) {
       log.error("log record parse before function exception", e);
     }
     try {
       ret = pjp.proceed();
+      executionResult = ExecutionResult.done(ret);
     } catch (Exception e) {
-      methodExecuteResult = new MethodExecuteResult(false, e, e.getMessage());
+      executionResult = ExecutionResult.error(e);
     }
     try {
-      recordExecute(ret, method, args, operations, targetClass,
-          methodExecuteResult.isSuccess(), methodExecuteResult.getErrorMsg(),
-          functionNameAndReturnMap);
+      for (LogRecordOps operation : operations) {
+        String success = expressionEvaluator.parseExpression(operation.getSuccess(), String.class,
+            executionResult);
+        operation.setSuccess(success);
+      }
     } catch (Exception t) {
       //记录日志错误不要影响业务
       log.error("log record parse exception", t);
     } finally {
       LogRecordContext.clear();
     }
-    if (methodExecuteResult.throwable != null) {
-      throw methodExecuteResult.throwable;
+
+    if (executionResult.getThrowable() != null) {
+      throw executionResult.getThrowable();
     }
     return ret;
   }
 
-
-  private void recordExecute(Object ret, Method method, Object[] args,
-      LogRecordOps operations, Class<?> targetClass, boolean success, String errorMsg,
-      Map<String, String> functionNameAndReturnMap) {
-
+  private LogRecordAnnotation[] getLogRecordAnnotations(ProceedingJoinPoint pjp) {
+    MethodSignature methodSignature = (MethodSignature) pjp.getSignature();
+    return AnnotatedElementUtils
+        .getMergedRepeatableAnnotations(methodSignature.getMethod(), LogRecordAnnotation.class)
+        .toArray(LogRecordAnnotation[]::new);
   }
-
-  private Map<String, String> processBeforeExecuteFunctionTemplate(List<String> spElTemplates,
-      Class<?> targetClass, Method method, Object[] args) {
-    Map<String, String> functionNameAndReturnMap = new HashMap<>();
-    for (String template : spElTemplates) {
-
-    }
-
-    return functionNameAndReturnMap;
-  }
-
-  private List<String> getBeforeExecuteFunctionTemplate(LogRecordOps operation) {
-    ArrayList<String> rtn = new ArrayList<>();
-    rtn.add(operation.getSuccess());
-    return rtn;
-  }
-
-  private EvaluationContext createEvaluationContext(Method method,
-      Object[] arguments, Object ret, String errorMsg) {
-    //构建
-
-    return new LogRecordEvaluationContext(method, arguments, ret, errorMsg);
-  }
-
-
-  private static class MethodExecuteResult {
-
-    private final boolean success;
-    private final Throwable throwable;
-    private final String errorMsg;
-
-    private MethodExecuteResult(boolean success, Throwable throwable, String errorMsg) {
-      this.success = success;
-      this.throwable = throwable;
-      this.errorMsg = errorMsg;
-    }
-
-    public boolean isSuccess() {
-      return success;
-    }
-
-    public Throwable getThrowable() {
-      return throwable;
-    }
-
-    public String getErrorMsg() {
-      return errorMsg;
-    }
-  }
-
 }
 

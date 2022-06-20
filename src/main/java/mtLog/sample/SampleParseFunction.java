@@ -1,19 +1,16 @@
 package mtLog.sample;
 
-import mtLog.service.IParseFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
-public class SampleParseFunction implements IParseFunction {
+public class SampleParseFunction {
 
-  @Override
-  public String functionName() {
-    return "getOrderNameById";
-  }
+  private final Logger log = LoggerFactory.getLogger(getClass());
 
-  @Override
   public String apply(String value) {
-    System.out.println("orderId: " + value);
+    log.info("orderId:{}", value);
     return "订单的名字";
   }
 }
