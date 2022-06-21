@@ -13,7 +13,6 @@ import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ParserContext;
-import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -47,7 +46,7 @@ public class ExpressionEvaluator {
   }
 
   public ExpressionEvaluator(BeanFactory beanFactory) {
-    this(new SpelExpressionParser(), new TemplateParserContext(), beanFactory);
+    this(new SpelExpressionParser(), null, beanFactory);
   }
 
   public SpelExpressionParser getParser() {

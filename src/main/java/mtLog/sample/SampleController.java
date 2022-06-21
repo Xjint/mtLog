@@ -15,8 +15,8 @@ public class SampleController {
   @GetMapping("/sample")
   //spel中可以通过#a{index}或#p{index}直接获取对应下标的形参
   //也可以通过#{形参名}来获取
-  @LogRecordAnnotation(success = "#{@sampleParseFunction.apply(#s1)}", bizNo = "", operator = "")
-  @LogRecordAnnotation(success = "#{@sampleParseFunction.apply(#p0)}", bizNo = "", operator = "")
+  @LogRecordAnnotation(success = "@sampleParseFunction.apply(#s1)", bizNo = "", operator = "")
+  @LogRecordAnnotation(success = "@sampleParseFunction.apply(#p0)", bizNo = "", operator = "")
   public String sample(String s1) {
     log.info(s1);
     return "ok";
